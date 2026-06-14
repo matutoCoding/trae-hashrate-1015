@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import AppLayout from '@/components/Layout/AppLayout';
 import FireworksPage from '@/pages/FireworksPage/FireworksPage';
 import PatternPage from '@/pages/PatternPage/PatternPage';

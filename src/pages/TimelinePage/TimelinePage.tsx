@@ -211,7 +211,13 @@ export default function TimelinePage() {
   const hasActualData = () => {
     return actualVideoUrl || actualNotes || deviationSummary || 
            weatherConditions || audienceFeedback ||
-           actualSegments.some(s => s.status !== 'completed' || s.deviationNotes);
+           actualSegments.some(s => 
+             s.status !== 'completed' || 
+             s.deviationNotes ||
+             (s.actualStartTime !== undefined && s.actualStartTime !== s.plannedStartTime) ||
+             (s.actualDuration !== undefined && s.actualDuration !== s.plannedDuration) ||
+             (s.actualLaunchCount !== undefined && s.actualLaunchCount !== s.plannedLaunchCount)
+           );
   };
 
   const handleSaveScript = () => {
