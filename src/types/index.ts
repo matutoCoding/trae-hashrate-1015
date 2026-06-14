@@ -113,6 +113,32 @@ export interface TrajectoryPoint {
   height: number;
 }
 
+export type SegmentStatus = 'pending' | 'completed' | 'delayed' | 'failed' | 'partial';
+
+export interface ActualSegmentRecord {
+  segmentId: string;
+  segmentName: string;
+  plannedStartTime: number;
+  actualStartTime?: number;
+  plannedDuration: number;
+  actualDuration?: number;
+  plannedLaunchCount: number;
+  actualLaunchCount?: number;
+  status: SegmentStatus;
+  deviationNotes?: string;
+}
+
+export interface ActualEffectRecord {
+  videoUrl?: string;
+  videoFileName?: string;
+  notes?: string;
+  deviationSummary?: string;
+  weatherConditions?: string;
+  audienceFeedback?: string;
+  segments: ActualSegmentRecord[];
+  recordedAt?: string;
+}
+
 export interface Script {
   id: string;
   projectId: string;
@@ -120,10 +146,27 @@ export interface Script {
   theme: string;
   version: string;
   launchScript: LaunchCommand[];
-  actualEffect?: string;
+  timelineSegments?: TimelineSegment[];
+  actualEffect?: ActualEffectRecord;
   createdAt: string;
   lastUsedAt?: string;
 }
+
+export const SEGMENT_STATUS_COLORS: Record<SegmentStatus, string> = {
+  pending: '#666666',
+  completed: '#2ed573',
+  delayed: '#ffa502',
+  failed: '#ff4757',
+  partial: '#a55eea',
+};
+
+export const SEGMENT_STATUS_LABELS: Record<SegmentStatus, string> = {
+  pending: '未执行',
+  completed: '已完成',
+  delayed: '延时',
+  failed: '失败',
+  partial: '部分完成',
+};
 
 export interface PatternShape {
   id: string;

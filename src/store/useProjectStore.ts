@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { DesignProject, LaunchPoint, TimelineSegment, LaunchCommand } from '../types';
+import { electronStore, isElectron } from '../lib/electronStore';
 
 interface ProjectState {
   projects: DesignProject[];
@@ -18,6 +19,7 @@ interface ProjectState {
   setTimelineSegments: (segments: TimelineSegment[]) => void;
   updateTimelineSegment: (id: string, updates: Partial<TimelineSegment>) => void;
   setLaunchScript: (script: LaunchCommand[]) => void;
+  syncFromElectron: () => Promise<void>;
 }
 
 const generateId = (): string => Math.random().toString(36).substring(2, 11);
@@ -47,6 +49,10 @@ export const useProjectStore = create<ProjectState>()(
           projects: [...state.projects, newProject],
           activeProjectId: newProject.id,
         }));
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       updateProject: (id, updates) => {
@@ -57,6 +63,10 @@ export const useProjectStore = create<ProjectState>()(
               : p
           ),
         }));
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       deleteProject: (id) => {
@@ -64,6 +74,10 @@ export const useProjectStore = create<ProjectState>()(
           projects: state.projects.filter((p) => p.id !== id),
           activeProjectId: state.activeProjectId === id ? null : state.activeProjectId,
         }));
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       setActiveProject: (id) => {
@@ -96,6 +110,10 @@ export const useProjectStore = create<ProjectState>()(
               : p
           ),
         }));
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       addLaunchPoints: (points) => {
@@ -117,6 +135,10 @@ export const useProjectStore = create<ProjectState>()(
             ),
           };
         });
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       updateLaunchPoint: (id, updates) => {
@@ -142,6 +164,10 @@ export const useProjectStore = create<ProjectState>()(
             ),
           };
         });
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       setTimelineSegments: (segments) => {
@@ -159,6 +185,10 @@ export const useProjectStore = create<ProjectState>()(
               : p
           ),
         }));
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       updateTimelineSegment: (id, updates) => {
@@ -178,10 +208,27 @@ export const useProjectStore = create<ProjectState>()(
               : p
           ),
         }));
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
       },
 
       setLaunchScript: (script) => {
         set({ launchScript: script });
+        
+        if (isElectron) {
+          electronStore.write('project-storage', { state: get(), version: 0 });
+        }
+      },
+
+      syncFromElectron: async () => {
+        if (!isElectron) return;
+        
+        const data = await electronStore.read('project-storage');
+        if (data && data.state) {
+          set(data.state);
+        }
       },
     }),
     {
@@ -189,3 +236,11 @@ export const useProjectStore = create<ProjectState>()(
     }
   )
 );
+
+if (typeof window !== 'undefined' && isElectron) {
+  electronStore.read('project-storage').then((data) => {
+    if (data && data.state) {
+      useProjectStore.setState(data.state);
+    }
+  });
+}

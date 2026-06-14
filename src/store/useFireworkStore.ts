@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { Firework } from '../types';
+import { electronStore, isElectron } from '../lib/electronStore';
 
 interface FireworkState {
   fireworks: Firework[];
@@ -12,6 +13,7 @@ interface FireworkState {
   getFireworkById: (id: string) => Firework | undefined;
   getFireworkMap: () => Map<string, Firework>;
   bulkImport: (fireworks: Omit<Firework, 'id' | 'createdAt'>[]) => void;
+  syncFromElectron: () => Promise<void>;
 }
 
 const generateId = (): string => Math.random().toString(36).substring(2, 11);
@@ -31,6 +33,10 @@ export const useFireworkStore = create<FireworkState>()(
         set((state) => ({
           fireworks: [...state.fireworks, newFirework],
         }));
+        
+        if (isElectron) {
+          electronStore.write('firework-storage', { state: get(), version: 0 });
+        }
       },
 
       updateFirework: (id, updates) => {
@@ -39,6 +45,10 @@ export const useFireworkStore = create<FireworkState>()(
             f.id === id ? { ...f, ...updates } : f
           ),
         }));
+        
+        if (isElectron) {
+          electronStore.write('firework-storage', { state: get(), version: 0 });
+        }
       },
 
       deleteFirework: (id) => {
@@ -46,6 +56,10 @@ export const useFireworkStore = create<FireworkState>()(
           fireworks: state.fireworks.filter((f) => f.id !== id),
           selectedFireworkId: state.selectedFireworkId === id ? null : state.selectedFireworkId,
         }));
+        
+        if (isElectron) {
+          electronStore.write('firework-storage', { state: get(), version: 0 });
+        }
       },
 
       selectFirework: (id) => {
@@ -71,6 +85,19 @@ export const useFireworkStore = create<FireworkState>()(
         set((state) => ({
           fireworks: [...state.fireworks, ...newFireworks],
         }));
+        
+        if (isElectron) {
+          electronStore.write('firework-storage', { state: get(), version: 0 });
+        }
+      },
+
+      syncFromElectron: async () => {
+        if (!isElectron) return;
+        
+        const data = await electronStore.read('firework-storage');
+        if (data && data.state) {
+          set(data.state);
+        }
       },
     }),
     {
@@ -78,3 +105,11 @@ export const useFireworkStore = create<FireworkState>()(
     }
   )
 );
+
+if (typeof window !== 'undefined' && isElectron) {
+  electronStore.read('firework-storage').then((data) => {
+    if (data && data.state) {
+      useFireworkStore.setState(data.state);
+    }
+  });
+}

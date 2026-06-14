@@ -1,10 +1,12 @@
 import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Library, Search, Download, Upload, Play, Pause, Eye, Trash2, Edit3, X, Check, Calendar, Tag, Film, FileJson, Clock, Zap } from 'lucide-react';
+import { Library, Search, Download, Upload, Play, Pause, Eye, Trash2, Edit3, X, Check, Calendar, Tag, Film, FileJson, Clock, Zap, Video, FileVideo, MessageSquare, Wind, Users, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { useScriptStore } from '@/store/useScriptStore';
 import { useFireworkStore } from '@/store/useFireworkStore';
-import type { Script, LaunchCommand } from '@/types';
+import { SEGMENT_STATUS_COLORS, SEGMENT_STATUS_LABELS } from '@/types';
+import type { Script, LaunchCommand, SegmentStatus } from '@/types';
 import { cn } from '@/lib/utils';
+import { electronStore } from '@/lib/electronStore';
 
 const THEME_COLORS: Record<string, string> = {
   '通用': '#00d4ff',
@@ -34,6 +36,7 @@ export default function LibraryPage() {
   const [previewScript, setPreviewScript] = useState<Script | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackTime, setPlaybackTime] = useState(0);
+  const [previewTab, setPreviewTab] = useState<'planned' | 'actual'>('planned');
   const [editingScript, setEditingScript] = useState<Script | null>(null);
   const [editName, setEditName] = useState('');
   const [editTheme, setEditTheme] = useState('');
@@ -132,6 +135,7 @@ export default function LibraryPage() {
     setPreviewScript(script);
     setPlaybackTime(0);
     setIsPlaying(false);
+    setPreviewTab('planned');
   };
 
   const handleClosePreview = () => {
@@ -343,6 +347,8 @@ export default function LibraryPage() {
                 const fwCount = new Set(script.launchScript.map(c => c.fireworkId)).size;
                 const duration = getTotalDuration(script.launchScript);
                 const themeColor = THEME_COLORS[script.theme] || '#a55eea';
+                const hasActualEffect = !!script.actualEffect;
+                const hasVideo = !!script.actualEffect?.videoUrl;
                 
                 return (
                   <motion.div
@@ -458,6 +464,20 @@ export default function LibraryPage() {
                               <Calendar className="w-3 h-3" />
                               <span>{formatDate(script.createdAt)}</span>
                             </div>
+
+                            {hasActualEffect && (
+                              <div className="bg-fire-orange/10 border border-fire-orange/30 rounded-lg p-2 mb-4">
+                                <div className="flex items-center gap-2 text-xs">
+                                  <Video className="w-3 h-3 text-fire-orange" />
+                                  <span className="text-fire-orange font-medium">有实燃记录</span>
+                                  {hasVideo && (
+                                    <span className="ml-auto px-2 py-0.5 bg-fire-orange/20 rounded text-[10px] text-fire-orange">
+                                      含视频
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </>
                         )}
 
@@ -509,6 +529,12 @@ export default function LibraryPage() {
                               <Calendar className="w-3 h-3" />
                               {formatDate(script.createdAt)}
                             </span>
+                            {hasActualEffect && (
+                              <span className="flex items-center gap-1 text-fire-orange">
+                                <Video className="w-3 h-3" />
+                                实燃记录
+                              </span>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center gap-1">
@@ -603,10 +629,44 @@ export default function LibraryPage() {
                     <X className="w-5 h-5" />
                   </button>
                 </div>
+                
+                <div className="flex gap-2 mt-4">
+                  <button
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
+                      previewTab === 'planned'
+                        ? 'bg-cyber-cyan/20 text-cyber-cyan border border-cyber-cyan/30'
+                        : 'bg-night-800 text-cyan-400/60 hover:text-white hover:bg-night-700'
+                    )}
+                    onClick={() => setPreviewTab('planned')}
+                  >
+                    <Clock className="w-4 h-4" />
+                    计划脚本
+                  </button>
+                  <button
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center gap-2',
+                      previewTab === 'actual'
+                        ? 'bg-fire-orange/20 text-fire-orange border border-fire-orange/30'
+                        : 'bg-night-800 text-cyan-400/60 hover:text-white hover:bg-night-700'
+                    )}
+                    onClick={() => {
+                      setPreviewTab('actual');
+                      setIsPlaying(false);
+                    }}
+                  >
+                    <Video className="w-4 h-4" />
+                    实燃效果
+                    {previewScript.actualEffect && (
+                      <span className="w-2 h-2 rounded-full bg-fire-orange" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <div className="p-6 flex-1 overflow-hidden flex flex-col">
-                <div className="relative h-64 bg-gradient-to-b from-night-900 to-night-800 rounded-xl mb-6 overflow-hidden">
+                {previewTab === 'planned' ? (
+                  <div className="relative h-64 bg-gradient-to-b from-night-900 to-night-800 rounded-xl mb-6 overflow-hidden">
                   <div className="absolute inset-0 grid-cols-[repeat(20,1fr)] grid-rows-[repeat(10,1fr)] opacity-20">
                     {Array.from({ length: 200 }).map((_, i) => (
                       <div key={i} className="border border-cyan-500/20" />
@@ -751,11 +811,207 @@ export default function LibraryPage() {
                     </table>
                   </div>
                 </div>
+                ) : (
+                  <div className="flex-1 overflow-auto space-y-4">
+                    {previewScript.actualEffect ? (
+                      <>
+                        {previewScript.actualEffect.videoUrl && (
+                          <div className="bg-night-800/50 rounded-xl p-4">
+                            <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-3 flex items-center gap-2">
+                              <FileVideo className="w-3 h-3" />
+                              现场视频
+                            </h4>
+                            <div className="aspect-video bg-night-900 rounded-lg flex items-center justify-center">
+                              <div className="text-center">
+                                <Video className="w-12 h-12 text-cyan-400/30 mx-auto mb-2" />
+                                <p className="text-sm text-cyan-400/40">{previewScript.actualEffect.videoFileName || '现场视频'}</p>
+                                <button
+                                  className="mt-3 btn btn-secondary text-sm"
+                                  onClick={() => electronStore.openFileLocation(previewScript.actualEffect!.videoUrl!)}
+                                >
+                                  <Film className="w-3 h-3" />
+                                  打开文件位置
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-night-800/50 rounded-xl p-4">
+                            <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <Wind className="w-3 h-3" />
+                              天气情况
+                            </h4>
+                            <p className="text-sm text-white">
+                              {previewScript.actualEffect.weatherConditions || '未记录'}
+                            </p>
+                          </div>
+                          <div className="bg-night-800/50 rounded-xl p-4">
+                            <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <Calendar className="w-3 h-3" />
+                              记录时间
+                            </h4>
+                            <p className="text-sm text-white">
+                              {previewScript.actualEffect.recordedAt ? formatDate(previewScript.actualEffect.recordedAt) : '未记录'}
+                            </p>
+                          </div>
+                        </div>
+
+                        {previewScript.actualEffect.notes && (
+                          <div className="bg-night-800/50 rounded-xl p-4">
+                            <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <MessageSquare className="w-3 h-3" />
+                              现场备注
+                            </h4>
+                            <p className="text-sm text-white">{previewScript.actualEffect.notes}</p>
+                          </div>
+                        )}
+
+                        {previewScript.actualEffect.audienceFeedback && (
+                          <div className="bg-night-800/50 rounded-xl p-4">
+                            <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <Users className="w-3 h-3" />
+                              观众反馈
+                            </h4>
+                            <p className="text-sm text-white">{previewScript.actualEffect.audienceFeedback}</p>
+                          </div>
+                        )}
+
+                        {previewScript.actualEffect.deviationSummary && (
+                          <div className="bg-fire-orange/10 border border-fire-orange/30 rounded-xl p-4">
+                            <h4 className="text-xs text-fire-orange uppercase tracking-wider mb-2 flex items-center gap-2">
+                              <AlertCircle className="w-3 h-3" />
+                              偏差说明
+                            </h4>
+                            <p className="text-sm text-white">{previewScript.actualEffect.deviationSummary}</p>
+                          </div>
+                        )}
+
+                        <div className="bg-night-800/50 rounded-xl p-4">
+                          <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-4">段落执行对比</h4>
+                          <div className="space-y-3">
+                            {previewScript.actualEffect.segments.map((seg, index) => {
+                              const timeDiff = (seg.actualStartTime ?? 0) - seg.plannedStartTime;
+                              const countDiff = (seg.actualLaunchCount ?? 0) - seg.plannedLaunchCount;
+                              
+                              return (
+                                <div key={seg.segmentId} className="bg-night-900/50 rounded-lg p-3">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <div 
+                                      className="w-3 h-3 rounded-full"
+                                      style={{ backgroundColor: SEGMENT_STATUS_COLORS[seg.status] }}
+                                    />
+                                    <span className="text-sm font-medium text-white flex-1">{seg.segmentName}</span>
+                                    <span 
+                                      className="text-xs px-2 py-0.5 rounded-full font-medium"
+                                      style={{ 
+                                        backgroundColor: SEGMENT_STATUS_COLORS[seg.status] + '20',
+                                        color: SEGMENT_STATUS_COLORS[seg.status]
+                                      }}
+                                    >
+                                      {SEGMENT_STATUS_LABELS[seg.status]}
+                                    </span>
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
+                                    <div className="flex justify-between">
+                                      <span className="text-cyan-400/60">计划时间</span>
+                                      <span className="font-mono text-white">{formatTime(seg.plannedStartTime)}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-cyan-400/60">实际时间</span>
+                                      <span className={cn(
+                                        'font-mono',
+                                        timeDiff !== 0 ? 'text-fire-orange' : 'text-cyber-green'
+                                      )}>
+                                        {formatTime(seg.actualStartTime ?? 0)}
+                                        {timeDiff !== 0 && (
+                                          <span className="ml-1">({timeDiff > 0 ? '+' : ''}{timeDiff}ms)</span>
+                                        )}
+                                      </span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-cyan-400/60">计划发数</span>
+                                      <span className="font-mono text-white">{seg.plannedLaunchCount}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                      <span className="text-cyan-400/60">实际发数</span>
+                                      <span className={cn(
+                                        'font-mono',
+                                        countDiff !== 0 ? 'text-fire-orange' : 'text-cyber-green'
+                                      )}>
+                                        {seg.actualLaunchCount ?? 0}
+                                        {countDiff !== 0 && (
+                                          <span className="ml-1">({countDiff > 0 ? '+' : ''}{countDiff})</span>
+                                        )}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  {seg.deviationNotes && (
+                                    <div className="mt-2 pt-2 border-t border-cyan-500/10">
+                                      <p className="text-xs text-cyan-400/80">
+                                        <span className="text-cyan-400/40">备注: </span>
+                                        {seg.deviationNotes}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+
+                        <div className="bg-night-800/50 rounded-xl p-4">
+                          <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-3">执行统计</h4>
+                          <div className="grid grid-cols-4 gap-3 text-center">
+                            {(['pending', 'completed', 'delayed', 'failed'] as SegmentStatus[]).map(status => {
+                              const count = previewScript.actualEffect!.segments.filter(s => s.status === status).length;
+                              return (
+                                <div key={status} className="bg-night-900/50 rounded-lg p-3">
+                                  <div 
+                                    className="font-display text-2xl"
+                                    style={{ color: SEGMENT_STATUS_COLORS[status] }}
+                                  >
+                                    {count}
+                                  </div>
+                                  <div className="text-[10px] text-cyan-400/60">
+                                    {SEGMENT_STATUS_LABELS[status]}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </>
+                    ) : (
+                      <div className="h-full flex items-center justify-center">
+                        <div className="text-center">
+                          <Video className="w-16 h-16 text-cyan-400/20 mx-auto mb-4" />
+                          <h4 className="text-lg font-bold text-white mb-2">暂无实燃记录</h4>
+                          <p className="text-sm text-cyan-400/60 max-w-sm">
+                            在时序编排页保存脚本时，可以记录实燃效果、现场视频、偏差说明等信息
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               <div className="p-6 border-t border-cyan-500/10 flex justify-between">
                 <div className="text-sm text-cyan-400/60">
-                  共 {previewScript.launchScript.length} 条发射指令
+                  {previewTab === 'planned' ? (
+                    <>共 {previewScript.launchScript.length} 条发射指令</>
+                  ) : previewScript.actualEffect ? (
+                    <>
+                      实燃记录 · {previewScript.actualEffect.segments.filter(s => s.status === 'completed').length}/{previewScript.actualEffect.segments.length} 段完成
+                      {previewScript.actualEffect.recordedAt && (
+                        <> · 记录于 {formatDate(previewScript.actualEffect.recordedAt)}</>
+                      )}
+                    </>
+                  ) : (
+                    <>暂无实燃记录</>
+                  )}
                 </div>
                 <div className="flex gap-3">
                   <button

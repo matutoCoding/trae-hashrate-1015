@@ -1,12 +1,15 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import type { Script } from '../types';
+import { useEffect } from 'react';
+import type { Script, ActualEffectRecord } from '../types';
+import { electronStore, isElectron } from '../lib/electronStore';
 
 interface ScriptState {
   scripts: Script[];
   selectedScriptId: string | null;
   saveScript: (script: Omit<Script, 'id' | 'createdAt'>) => void;
   updateScript: (id: string, updates: Partial<Script>) => void;
+  updateActualEffect: (id: string, actualEffect: ActualEffectRecord) => void;
   deleteScript: (id: string) => void;
   selectScript: (id: string | null) => void;
   getScriptById: (id: string) => Script | undefined;
@@ -14,6 +17,7 @@ interface ScriptState {
   getThemes: () => string[];
   exportScript: (id: string) => string;
   importScript: (jsonString: string) => void;
+  syncFromElectron: () => Promise<void>;
 }
 
 const generateId = (): string => Math.random().toString(36).substring(2, 11);
@@ -33,6 +37,10 @@ export const useScriptStore = create<ScriptState>()(
         set((state) => ({
           scripts: [...state.scripts, newScript],
         }));
+        
+        if (isElectron) {
+          electronStore.write('script-storage', { state: get(), version: 0 });
+        }
       },
 
       updateScript: (id, updates) => {
@@ -41,6 +49,22 @@ export const useScriptStore = create<ScriptState>()(
             s.id === id ? { ...s, ...updates } : s
           ),
         }));
+        
+        if (isElectron) {
+          electronStore.write('script-storage', { state: get(), version: 0 });
+        }
+      },
+
+      updateActualEffect: (id, actualEffect) => {
+        set((state) => ({
+          scripts: state.scripts.map((s) =>
+            s.id === id ? { ...s, actualEffect, lastUsedAt: new Date().toISOString() } : s
+          ),
+        }));
+        
+        if (isElectron) {
+          electronStore.write('script-storage', { state: get(), version: 0 });
+        }
       },
 
       deleteScript: (id) => {
@@ -48,6 +72,10 @@ export const useScriptStore = create<ScriptState>()(
           scripts: state.scripts.filter((s) => s.id !== id),
           selectedScriptId: state.selectedScriptId === id ? null : state.selectedScriptId,
         }));
+        
+        if (isElectron) {
+          electronStore.write('script-storage', { state: get(), version: 0 });
+        }
       },
 
       selectScript: (id) => {
@@ -81,9 +109,26 @@ export const useScriptStore = create<ScriptState>()(
           throw new Error('Invalid script format');
         }
       },
+
+      syncFromElectron: async () => {
+        if (!isElectron) return;
+        
+        const data = await electronStore.read('script-storage');
+        if (data && data.state) {
+          set(data.state);
+        }
+      },
     }),
     {
       name: 'script-storage',
     }
   )
 );
+
+if (typeof window !== 'undefined' && isElectron) {
+  electronStore.read('script-storage').then((data) => {
+    if (data && data.state) {
+      useScriptStore.setState(data.state);
+    }
+  });
+}
