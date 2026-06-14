@@ -666,87 +666,88 @@ export default function LibraryPage() {
 
               <div className="p-6 flex-1 overflow-hidden flex flex-col">
                 {previewTab === 'planned' ? (
-                  <div className="relative h-64 bg-gradient-to-b from-night-900 to-night-800 rounded-xl mb-6 overflow-hidden">
-                  <div className="absolute inset-0 grid-cols-[repeat(20,1fr)] grid-rows-[repeat(10,1fr)] opacity-20">
-                    {Array.from({ length: 200 }).map((_, i) => (
-                      <div key={i} className="border border-cyan-500/20" />
-                    ))}
-                  </div>
-
-                  {getActiveCommands(previewScript.launchScript, playbackTime).map((cmd, i) => {
-                    const fw = fireworkMap.get(cmd.fireworkId);
-                    const progress = Math.min(1, (playbackTime - cmd.time) / 3000);
-                    const x = 50 + (Math.sin(cmd.time * 0.01 + i) * 30);
-                    const y = 70 - (progress * 60);
-                    const scale = 0.5 + progress * 0.5;
-                    
-                    return (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, scale: 0 }}
-                        animate={{ 
-                          opacity: 1 - progress * 0.5,
-                          scale,
-                          x: `${x}%`,
-                          y: `${y}%`,
-                        }}
-                        className="absolute w-8 h-8 -ml-4 -mt-4 rounded-full"
-                        style={{
-                          backgroundColor: fw?.color || '#ff6b35',
-                          boxShadow: `0 0 ${20 * scale}px ${fw?.color || '#ff6b35'}`,
-                          left: `${x}%`,
-                          top: `${y}%`,
-                        }}
-                      />
-                    );
-                  })}
-
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <div className="bg-night-900/80 backdrop-blur-sm rounded-lg p-3">
-                      <div className="flex items-center gap-4 mb-2">
-                        <button
-                          className="p-2 rounded-lg bg-fire-orange text-white"
-                          onClick={() => {
-                            if (playbackTime >= getTotalDuration(previewScript.launchScript)) {
-                              setPlaybackTime(0);
-                            }
-                            setIsPlaying(!isPlaying);
-                          }}
-                        >
-                          {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                        </button>
-                        <div className="flex-1 font-mono text-white">
-                          {formatTime(playbackTime)} / {formatTime(getTotalDuration(previewScript.launchScript))}
-                        </div>
-                        <div className="text-xs text-cyan-400/60">
-                          实时发射: {getActiveCommands(previewScript.launchScript, playbackTime).length} 发
-                        </div>
-                      </div>
-                      <div className="relative h-2 bg-night-800 rounded-full overflow-hidden cursor-pointer"
-                        onClick={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          const x = e.clientX - rect.left;
-                          const percent = x / rect.width;
-                          setPlaybackTime(percent * getTotalDuration(previewScript.launchScript));
-                        }}
-                      >
-                        <motion.div
-                          className="absolute inset-y-0 left-0 bg-gradient-to-r from-fire-orange to-fire-gold"
-                          style={{ width: `${(playbackTime / getTotalDuration(previewScript.launchScript)) * 100}%` }}
-                        />
-                        {previewScript.launchScript.map((cmd, i) => (
-                          <div
-                            key={i}
-                            className="absolute top-0 bottom-0 w-0.5 bg-white/30"
-                            style={{ left: `${(cmd.time / getTotalDuration(previewScript.launchScript)) * 100}%` }}
-                          />
+                  <>
+                    <div className="relative h-64 bg-gradient-to-b from-night-900 to-night-800 rounded-xl mb-6 overflow-hidden">
+                      <div className="absolute inset-0 grid-cols-[repeat(20,1fr)] grid-rows-[repeat(10,1fr)] opacity-20">
+                        {Array.from({ length: 200 }).map((_, i) => (
+                          <div key={i} className="border border-cyan-500/20" />
                         ))}
                       </div>
-                    </div>
-                  </div>
-                </div>
 
-                <div className="flex-1 overflow-auto">
+                      {getActiveCommands(previewScript.launchScript, playbackTime).map((cmd, i) => {
+                        const fw = fireworkMap.get(cmd.fireworkId);
+                        const progress = Math.min(1, (playbackTime - cmd.time) / 3000);
+                        const x = 50 + (Math.sin(cmd.time * 0.01 + i) * 30);
+                        const y = 70 - (progress * 60);
+                        const scale = 0.5 + progress * 0.5;
+                        
+                        return (
+                          <motion.div
+                            key={i}
+                            initial={{ opacity: 0, scale: 0 }}
+                            animate={{ 
+                              opacity: 1 - progress * 0.5,
+                              scale,
+                              x: `${x}%`,
+                              y: `${y}%`,
+                            }}
+                            className="absolute w-8 h-8 -ml-4 -mt-4 rounded-full"
+                            style={{
+                              backgroundColor: fw?.color || '#ff6b35',
+                              boxShadow: `0 0 ${20 * scale}px ${fw?.color || '#ff6b35'}`,
+                              left: `${x}%`,
+                              top: `${y}%`,
+                            }}
+                          />
+                        );
+                      })}
+
+                      <div className="absolute bottom-4 left-4 right-4">
+                        <div className="bg-night-900/80 backdrop-blur-sm rounded-lg p-3">
+                          <div className="flex items-center gap-4 mb-2">
+                            <button
+                              className="p-2 rounded-lg bg-fire-orange text-white"
+                              onClick={() => {
+                                if (playbackTime >= getTotalDuration(previewScript.launchScript)) {
+                                  setPlaybackTime(0);
+                                }
+                                setIsPlaying(!isPlaying);
+                              }}
+                            >
+                              {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
+                            </button>
+                            <div className="flex-1 font-mono text-white">
+                              {formatTime(playbackTime)} / {formatTime(getTotalDuration(previewScript.launchScript))}
+                            </div>
+                            <div className="text-xs text-cyan-400/60">
+                              实时发射: {getActiveCommands(previewScript.launchScript, playbackTime).length} 发
+                            </div>
+                          </div>
+                          <div className="relative h-2 bg-night-800 rounded-full overflow-hidden cursor-pointer"
+                            onClick={(e) => {
+                              const rect = e.currentTarget.getBoundingClientRect();
+                              const x = e.clientX - rect.left;
+                              const percent = x / rect.width;
+                              setPlaybackTime(percent * getTotalDuration(previewScript.launchScript));
+                            }}
+                          >
+                            <motion.div
+                              className="absolute inset-y-0 left-0 bg-gradient-to-r from-fire-orange to-fire-gold"
+                              style={{ width: `${(playbackTime / getTotalDuration(previewScript.launchScript)) * 100}%` }}
+                            />
+                            {previewScript.launchScript.map((cmd, i) => (
+                              <div
+                                key={i}
+                                className="absolute top-0 bottom-0 w-0.5 bg-white/30"
+                                style={{ left: `${(cmd.time / getTotalDuration(previewScript.launchScript)) * 100}%` }}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 overflow-auto">
                   <h4 className="text-xs text-cyan-400/60 uppercase tracking-wider mb-3">发射指令列表</h4>
                   <div className="overflow-x-auto">
                     <table className="w-full text-sm">
@@ -811,6 +812,7 @@ export default function LibraryPage() {
                     </table>
                   </div>
                 </div>
+                  </>
                 ) : (
                   <div className="flex-1 overflow-auto space-y-4">
                     {previewScript.actualEffect ? (
